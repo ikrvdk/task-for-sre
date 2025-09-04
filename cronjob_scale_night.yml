@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hpa-night-adjust
+spec:
+  schedule: "0 0 * * *"  # c 12 ночи
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hpa-patcher
+            image: bitnami/kubectl:latest
+            command:
+              - /bin/sh
+              - -c
+              - |
+                echo "Patching HPA for night..."
+                kubectl patch hpa app-hpa -p '{"spec":{"minReplicas":2,"maxReplicas":3}}' -n default
+          restartPolicy: OnFailure
+          serviceAccountName: scaler-sa

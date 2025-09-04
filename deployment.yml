@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  replicas: 4 # 4 реплики
+  revisionHistoryLimit: 5 # храним 5 прошлых ревизий для возможности отката
+  strategy:
+    type: RollingUpdate
+    # не допускаем потери доступности при релизе
+    rollingUpdate:
+      maxSurge: 1 # во время обновления можно поднять +1 новый pod
+      maxUnavailable: 0 # все старые pod-ы должны работать до старта новых
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      topologySpreadConstraints:
+        # равномерное распределение по зонам, устойчивость к отказу зоны
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: app
+        # по нодам в пределах зоны
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: app
+      # по возможности не планировать на одну ноду
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: app
+
+      # время на корректное завершение:
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: app
+          image: stefanprodan/podinfo
+          imagePullPolicy: IfNotPresent
+
+          # ресурсы:
+          resources:
+            requests:
+              cpu: "100m"       # после прогрева CPU 0.1
+              memory: "128Mi"   # RAM 128Mi
+            limits:
+              cpu: "1500m"      # на первые запросы нужно больше cpu, поэтому более высокий limit
+              memory: "256Mi"   # небольшой запас на пики
+              
+          # пробы
+          startupProbe:         # startupProbe, чтобы не дёргал liveness раньше времени
+            httpGet:
+              path: /healthz
+              port: 9898
+            periodSeconds: 2
+            failureThreshold: 10 # 10*2 = 20с на старт (покрывает 5–10с с запасом)
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 9898
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9898
+            initialDelaySeconds: 20 
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          ports:
+            - name: http
+              containerPort: 9898          
