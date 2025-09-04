@@ -1,6 +1,8 @@
 **Делаем в minikube кластер из 5 нод**:
 
-`minikube start --nodes=5 -p my-cluster`
+```
+minikube start --nodes=5 -p my-cluster
+```
 
 **Распределяем ноды по трем зонам**:
 
@@ -15,15 +17,21 @@ kubectl get nodes --show-labels
 
 **Деплоим приложение**:
 
-`kubectl apply -f .\deployment.yml`
+```
+kubectl apply -f .\deployment.yml
+```
 
 **Проверяем запуск подов**:
 
-`kubectl get pods -o wide`
+```
+kubectl get pods -o wide
+```
 
 **Применяем настройки HorizontalPodAutoscaler**:
 
-`kubectl apply -f .\hpa.yml`
+```
+kubectl apply -f .\hpa.yml
+```
 
 **Авто-скейлинг под нагрузкой**.
 Запускаем временный контейнер в поде:
@@ -43,7 +51,9 @@ kubectl debug -it pod/<один из подов> --image=ubuntu -- bash
 
 Смотрим, как HPA увеличивает количество реплик:
 
-`kubectl get hpa`
+```
+kubectl get hpa
+```
 
 **Измененяем настройки HPA в зависимости от времени при помощи CronJob**. Для примера пусть ночью будет 2 реплики, а максимум 3
 
